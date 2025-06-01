@@ -1,121 +1,112 @@
 import 'package:flutter/material.dart';
-import '../../models/book.dart';
-import '../../services/api_service.dart';
-import '../../widgets/book_list_item.dart';
-import 'detail_page.dart';
 import 'favorite_page.dart';
+import 'rekomendasi_page.dart';
+import 'konversi_waktu_page.dart';
+import 'profile_page.dart';
+import 'konversi_mata_uang_page.dart';
+import 'feedback_page.dart';
+import 'location_page.dart'; // import halaman lokasi
 
-class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+class _MenuItem {
+  final String title;
+  final IconData icon;
+  final Widget page;
 
-  @override
-  _HomePageState createState() => _HomePageState();
+  _MenuItem(this.title, this.icon, this.page);
 }
 
-class _HomePageState extends State<HomePage> {
-  final ApiService _apiService = ApiService();
-  List<Book> _books = [];
-  List<Book> _filteredBooks = [];
-  bool _isLoading = true;
+class HomePage extends StatelessWidget {
+  final List<_MenuItem> menuItems = [
+    _MenuItem('Rekomendasi Buku', Icons.book, RekomendasiPage()),
+    _MenuItem('Konversi Waktu', Icons.access_time, KonversiWaktuPage()),
+    _MenuItem('Favorit', Icons.favorite, FavoritePage()),
+    _MenuItem('Konversi Mata Uang', Icons.attach_money, KonversiMataUangPage()),
+    _MenuItem('Saran & Kesan', Icons.feedback, FeedbackPage()),
+    _MenuItem('Lokasi Saya', Icons.location_on, LocationPage()), // menu baru
+  ];
 
-  @override
-  void initState() {
-    super.initState();
-    _fetchBooks();
-  }
-
-  Future<void> _fetchBooks() async {
-  setState(() {
-    _isLoading = true;
-  });
-  try {
-    final booksJson = await _apiService.fetchBooks();
-    final books = booksJson.map<Book>((json) => Book.fromJson(json)).toList();
-    setState(() {
-      _books = books;
-      _filteredBooks = books;
-      _isLoading = false;
-    });
-  } catch (e) {
-    setState(() {
-      _isLoading = false;
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Gagal memuat data buku')),
-    );
-  }
-}
-
-  void _filterBooks(String query) {
-    final filtered = _books.where((book) {
-      final titleLower = book.title.toLowerCase();
-      final authorLower = book.author.toLowerCase();
-      final searchLower = query.toLowerCase();
-      return titleLower.contains(searchLower) || authorLower.contains(searchLower);
-    }).toList();
-
-    setState(() {
-      _filteredBooks = filtered;
-    });
-  }
-
-  void _navigateToDetail(Book book) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => DetailPage(book: book)),
-    );
-  }
-
-  void _navigateToFavorite() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => FavoritePage()),
-    );
+  void _logout(BuildContext context) {
+    // TODO: Tambahkan logika logout jika ada, misalnya hapus session/token
+    Navigator.pushReplacementNamed(context, '/login');
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Rekomendasi Buku'),
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back),
+          onPressed: () {
+            Navigator.pop(context);
+          },
+        ),
+        backgroundColor: Colors.blue,
+        elevation: 0,
+        title: Text(
+          'Selamat Datang di Aplikasi BIRU',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
         actions: [
           IconButton(
-            icon: Icon(Icons.favorite),
-            onPressed: _navigateToFavorite,
-            tooltip: 'Favorit',
+            icon: Icon(Icons.person),
+            tooltip: 'Lihat Profil',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => ProfilePage()),
+              );
+            },
+          ),
+          IconButton(
+            icon: Icon(Icons.logout),
+            onPressed: () => _logout(context),
+            tooltip: 'Logout',
           ),
         ],
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: TextField(
-              decoration: InputDecoration(
-                labelText: 'Cari buku atau penulis',
-                prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(),
-              ),
-              onChanged: _filterBooks,
-            ),
-          ),
-          Expanded(
-            child: _isLoading
-                ? Center(child: CircularProgressIndicator())
-                : _filteredBooks.isEmpty
-                    ? Center(child: Text('Tidak ada buku ditemukan'))
-                    : ListView.builder(
-                        itemCount: _filteredBooks.length,
-                        itemBuilder: (context, index) {
-                          final book = _filteredBooks[index];
-                          return BookListItem(
-                            book: book,
-                            onTap: () => _navigateToDetail(book),
-                          );
-                        },
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(height: 8),
+            Expanded(
+              child: GridView.count(
+                crossAxisCount: 2,
+                padding: EdgeInsets.all(16),
+                crossAxisSpacing: 16,
+                mainAxisSpacing: 16,
+                children: menuItems.map((item) {
+                  return GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => item.page),
+                      );
+                    },
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.blue[100],
+                        borderRadius: BorderRadius.circular(16),
                       ),
-          ),
-        ],
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(item.icon, size: 50, color: Colors.blue[800]),
+                          SizedBox(height: 10),
+                          Text(
+                            item.title,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

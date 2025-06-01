@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import '../../services/time_service.dart';
 
 class TimeConversionPage extends StatefulWidget {
-  const TimeConversionPage({super.key});
-
   @override
   _TimeConversionPageState createState() => _TimeConversionPageState();
 }

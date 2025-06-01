@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class BottomNavigation extends StatefulWidget {
-  const BottomNavigation({super.key});
+  const BottomNavigation({Key? key}) : super(key: key);
 
   @override
   _BottomNavigationState createState() => _BottomNavigationState();

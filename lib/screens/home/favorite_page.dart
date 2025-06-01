@@ -5,8 +5,6 @@ import '../../widgets/book_list_item.dart';
 import 'detail_page.dart';
 
 class FavoritePage extends StatefulWidget {
-  const FavoritePage({super.key});
-
   @override
   _FavoritePageState createState() => _FavoritePageState();
 }
@@ -26,9 +24,12 @@ class _FavoritePageState extends State<FavoritePage> {
     setState(() {
       _isLoading = true;
     });
-    final favs = await _dbService.getFavorites();
+
+    final favsMapList = await _dbService.getFavorites();
+    final favsList = favsMapList.map((e) => Book.fromMap(e)).toList();
+
     setState(() {
-      _favorites = favs.cast<Book>();
+      _favorites = favsList;
       _isLoading = false;
     });
   }

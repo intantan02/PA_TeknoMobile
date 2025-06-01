@@ -1,4 +1,5 @@
 class User {
+  final String id;
   final String username;
   final String passwordHash;
   final String? fullName;
@@ -6,6 +7,7 @@ class User {
   final String? profileImageUrl;
 
   User({
+    required this.id,
     required this.username,
     required this.passwordHash,
     this.fullName,
@@ -16,6 +18,7 @@ class User {
   // Convert User object to JSON map
   Map<String, dynamic> toJson() {
     return {
+      'id': id,
       'username': username,
       'passwordHash': passwordHash,
       'fullName': fullName,
@@ -27,6 +30,7 @@ class User {
   // Create User object from JSON map
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
+      id: json['id'],
       username: json['username'],
       passwordHash: json['passwordHash'],
       fullName: json['fullName'],

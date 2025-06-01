@@ -1,53 +1,106 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
-import '../utils/encryption.dart';
-import '../utils/session_manager.dart';
+import 'package:crypto/crypto.dart';
+import 'package:sqflite/sqflite.dart';
+import 'db_service.dart';
 
 class AuthService {
-  static const String baseUrl = 'https://www.googleapis.com/books/v1/volumes'; // Ganti dengan URL API asli
+  final DBService _dbService = DBService();
 
-  Future<bool> login(String username, String password) async {
-    final encryptedPassword = Encryption.encryptPassword(password);
-    final response = await http.post(
-      Uri.parse('$baseUrl/login'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'username': username,
-        'password': encryptedPassword,
-      }),
-    );
-
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      // Simpan token dan user info ke session
-      await SessionManager.saveToken(data['token']);
-      await SessionManager.saveUser(data['user']);
-      return true;
-    } else {
-      return false;
-    }
+  // Hash password menggunakan SHA-256
+  String _hashPassword(String password) {
+    return sha256.convert(utf8.encode(password)).toString();
   }
 
-  Future<bool> register(String username, String email, String password) async {
-    final encryptedPassword = Encryption.encryptPassword(password);
-    final response = await http.post(
-      Uri.parse('$baseUrl/register'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
+  // Register user baru
+  Future<bool> register({
+    required String username,
+    required String email,
+    required String password,
+  }) async {
+    final db = await _dbService.database;
+
+    // Cek apakah username atau email sudah ada di database
+    final existing = await db.query(
+      'users',
+      where: 'username = ? OR email = ?',
+      whereArgs: [username, email],
+      limit: 1,
+    );
+
+    if (existing.isNotEmpty) {
+      // Username atau email sudah terpakai
+      return false;
+    }
+
+    final hashedPassword = _hashPassword(password);
+
+    try {
+      await db.insert('users', {
         'username': username,
         'email': email,
-        'password': encryptedPassword,
-      }),
-    );
-
-    if (response.statusCode == 201) {
+        'password': hashedPassword,
+      });
       return true;
-    } else {
+    } catch (e) {
+      print('Error register user: $e');
       return false;
     }
   }
 
+  // Login user berdasarkan username dan password
+  Future<bool> login({
+    required String username,
+    required String password,
+  }) async {
+    final db = await _dbService.database;
+    final hashedPassword = _hashPassword(password);
+
+    final result = await db.query(
+      'users',
+      where: 'username = ? AND password = ?',
+      whereArgs: [username, hashedPassword],
+      limit: 1,
+    );
+
+    if (result.isNotEmpty) {
+      // Simpan session user yang berhasil login
+      await _saveSession(result.first);
+      return true;
+    }
+    return false;
+  }
+
+  // Simpan session user saat login
+  Future<void> _saveSession(Map<String, dynamic> user) async {
+    final db = await _dbService.database;
+
+    try {
+      await db.transaction((txn) async {
+        await txn.delete('user_session'); // Hapus session lama
+        await txn.insert('user_session', {
+          'id': user['id'],
+          'username': user['username'],
+          'email': user['email'],
+        });
+      });
+    } catch (e) {
+      print('Failed to save session: $e');
+    }
+  }
+
+  // Ambil user session yang sedang login
+  Future<Map<String, dynamic>?> getCurrentUser() async {
+    final db = await _dbService.database;
+    final result = await db.query('user_session', limit: 1);
+    if (result.isNotEmpty) {
+      return result.first;
+    }
+    return null;
+  }
+
+  // Logout user dan hapus session
   Future<void> logout() async {
-    await SessionManager.clearSession();
+    final db = await _dbService.database;
+    await db.delete('user_session');
   }
 }

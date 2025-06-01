@@ -5,7 +5,7 @@ import '../../services/db_service.dart';
 class DetailPage extends StatefulWidget {
   final Book book;
 
-  const DetailPage({super.key, required this.book});
+  const DetailPage({Key? key, required this.book}) : super(key: key);
 
   @override
   _DetailPageState createState() => _DetailPageState();
@@ -22,21 +22,22 @@ class _DetailPageState extends State<DetailPage> {
   }
 
   Future<void> _checkFavorite() async {
-    final isFav = await _dbService.isFavorite(widget.book.id as int);
+    bool fav = await _dbService.isFavorite(widget.book.id as String);
     setState(() {
-      _isFavorite = isFav;
+      _isFavorite = fav;
     });
   }
 
   Future<void> _toggleFavorite() async {
     if (_isFavorite) {
-      await _dbService.removeFavorite(widget.book.id as int);
+      await _dbService.removeFavorite(widget.book.id as String);
     } else {
-      await _dbService.addFavorite(widget.book as Map<String, dynamic>);
+      await _dbService.addFavorite(widget.book.toMap());
     }
     setState(() {
       _isFavorite = !_isFavorite;
     });
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(_isFavorite ? 'Ditambahkan ke favorit' : 'Dihapus dari favorit'),
@@ -59,24 +60,29 @@ class _DetailPageState extends State<DetailPage> {
         ],
       ),
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: ListView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
           children: [
             if (book.coverUrl.isNotEmpty)
-              Image.network(book.coverUrl, height: 250, fit: BoxFit.cover),
-            SizedBox(height: 16),
+              Image.network(
+                book.coverUrl,
+                height: 250,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => Container(
+                  height: 250,
+                  color: Colors.grey[300],
+                  alignment: Alignment.center,
+                  child: Icon(Icons.broken_image, size: 50, color: Colors.grey),
+                ),
+              ),
+            const SizedBox(height: 16),
             Text(
               book.title,
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
             Text(
               'Penulis: ${book.author}',
-              style: TextStyle(fontSize: 18, fontStyle: FontStyle.italic),
-            ),
-            SizedBox(height: 16),
-            Text(
-              book.description,
-              style: TextStyle(fontSize: 16),
+              style: const TextStyle(fontSize: 18, fontStyle: FontStyle.italic),
             ),
           ],
         ),

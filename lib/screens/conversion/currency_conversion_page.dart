@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import '../../services/currency_service.dart';
 
 class CurrencyConversionPage extends StatefulWidget {
-  const CurrencyConversionPage({super.key});
-
   @override
   _CurrencyConversionPageState createState() => _CurrencyConversionPageState();
 }
