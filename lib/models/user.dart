@@ -1,10 +1,33 @@
-class User {
-  final String id;
-  final String username;
-  final String passwordHash;
-  final String? fullName;
-  final String? email;
-  final String? profileImageUrl;
+import 'dart:convert';
+import 'package:hive/hive.dart';
+import 'package:crypto/crypto.dart';
+
+part 'user.g.dart';
+
+// Fungsi hash password
+String hashPassword(String password) {
+  return sha256.convert(utf8.encode(password)).toString();
+}
+
+@HiveType(typeId: 0)
+class User extends HiveObject {
+  @HiveField(0)
+  int id; // ubah dari String ke int
+
+  @HiveField(1)
+  String username;
+
+  @HiveField(2)
+  String passwordHash;
+
+  @HiveField(3)
+  String? fullName;
+
+  @HiveField(4)
+  String? email;
+
+  @HiveField(5)
+  String? profileImageUrl;
 
   User({
     required this.id,
@@ -14,28 +37,4 @@ class User {
     this.email,
     this.profileImageUrl,
   });
-
-  // Convert User object to JSON map
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'username': username,
-      'passwordHash': passwordHash,
-      'fullName': fullName,
-      'email': email,
-      'profileImageUrl': profileImageUrl,
-    };
-  }
-
-  // Create User object from JSON map
-  factory User.fromJson(Map<String, dynamic> json) {
-    return User(
-      id: json['id'],
-      username: json['username'],
-      passwordHash: json['passwordHash'],
-      fullName: json['fullName'],
-      email: json['email'],
-      profileImageUrl: json['profileImageUrl'],
-    );
-  }
 }

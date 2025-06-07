@@ -17,15 +17,16 @@ class _CurrencyConversionPageState extends State<CurrencyConversionPage> {
 
   final TextEditingController _controller = TextEditingController();
 
-  void _convert() {
+  Future<void> _convert() async {
     final input = double.tryParse(_controller.text);
     if (input == null) {
       setState(() {
+        _inputAmount = 0;
         _convertedAmount = 0;
       });
       return;
     }
-    final result = _currencyService.convert(_fromCurrency, _toCurrency, input);
+    final result = await _currencyService.convert(_fromCurrency, _toCurrency, input);
     setState(() {
       _inputAmount = input;
       _convertedAmount = result;
@@ -60,8 +61,7 @@ class _CurrencyConversionPageState extends State<CurrencyConversionPage> {
           children: [
             TextField(
               controller: _controller,
-              keyboardType:
-                  TextInputType.numberWithOptions(decimal: true),
+              keyboardType: TextInputType.numberWithOptions(decimal: true),
               decoration: InputDecoration(
                 labelText: 'Jumlah',
                 border: OutlineInputBorder(),
@@ -75,12 +75,12 @@ class _CurrencyConversionPageState extends State<CurrencyConversionPage> {
                 Column(
                   children: [
                     Text('Dari'),
-                    _buildDropdown(_fromCurrency, (val) {
+                    _buildDropdown(_fromCurrency, (val) async {
                       if (val != null) {
                         setState(() {
                           _fromCurrency = val;
-                          _convert();
                         });
+                        await _convert();
                       }
                     }),
                   ],
@@ -88,12 +88,12 @@ class _CurrencyConversionPageState extends State<CurrencyConversionPage> {
                 Column(
                   children: [
                     Text('Ke'),
-                    _buildDropdown(_toCurrency, (val) {
+                    _buildDropdown(_toCurrency, (val) async {
                       if (val != null) {
                         setState(() {
                           _toCurrency = val;
-                          _convert();
                         });
+                        await _convert();
                       }
                     }),
                   ],
@@ -102,7 +102,7 @@ class _CurrencyConversionPageState extends State<CurrencyConversionPage> {
             ),
             SizedBox(height: 32),
             Text(
-              '$_inputAmount $_fromCurrency = $_convertedAmount $_toCurrency',
+              '${_inputAmount == 0 ? '' : _inputAmount.toString()} $_fromCurrency = ${_inputAmount == 0 ? '' : _convertedAmount.toString()} $_toCurrency',
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
           ],

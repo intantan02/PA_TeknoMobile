@@ -1,15 +1,18 @@
 import 'package:sensors_plus/sensors_plus.dart';
-import 'package:sensors_plus/sensors_plus.dart' as SensorsPlus;
 
 class SensorService {
-  Stream<AccelerometerEvent> get accelerometerEvents => SensorsPlus.accelerometerEvents;
-  Stream<GyroscopeEvent> get gyroscopeEvents => SensorsPlus.gyroscopeEvents;
+  // Stream untuk mendapatkan data accelerometer secara realtime
+  Stream<AccelerometerEvent> get accelerometerEvents => accelerometerEvents;
 
-  // Contoh fungsi untuk mendapatkan data sensor secara realtime
+  // Stream untuk mendapatkan data gyroscope secara realtime
+  Stream<GyroscopeEvent> get gyroscopeEvents => gyroscopeEvents;
+
+  // Mendengarkan data accelerometer
   void listenAccelerometer(void Function(AccelerometerEvent event) onData) {
     accelerometerEvents.listen(onData);
   }
 
+  // Mendengarkan data gyroscope
   void listenGyroscope(void Function(GyroscopeEvent event) onData) {
     gyroscopeEvents.listen(onData);
   }

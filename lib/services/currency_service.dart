@@ -2,36 +2,48 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class CurrencyService {
-  static const String _apiKey = 'ae6e70683b65588d04ded764';
-  static const String _baseUrl = 'https://v6.exchangerate-api.com/v6/$_apiKey/latest/';
+  // Kurs terhadap USD sebagai patokan (offline fallback)
+  final Map<String, double> _rates = {
+    'USD': 1.0,
+    'EUR': 0.91,
+    'JPY': 144.54,
+    'GBP': 0.79,
+    'AUD': 1.48,
+    'CAD': 1.35,
+    'CHF': 0.90,
+    'CNY': 7.16,
+    'SEK': 10.40,
+    'NZD': 1.60,
+    'IDR': 15000.0,
+    'MYR': 4.55,
+    'SGD': 1.34,
+    'THB': 34.0,
+    'KRW': 1315.0,
+    'HKD': 7.85,
+    'PHP': 55.5,
+    'VND': 23400.0,
+    'INR': 82.3,
+    'RUB': 94.1,
+  };
 
-  // Untuk kebutuhan UI (offline/static)
+  // Konversi antar mata uang
   double convert(String from, String to, double amount) {
-    final rates = {
-      'IDR': {'USD': 0.000065, 'GBP': 0.000051, 'IDR': 1.0},
-      'USD': {'IDR': 15385.0, 'GBP': 0.78, 'USD': 1.0},
-      'GBP': {'IDR': 19615.0, 'USD': 1.28, 'GBP': 1.0},
-    };
-
-    if (!rates.containsKey(from) || !rates[from]!.containsKey(to)) {
-      return 0;
+    if (!_rates.containsKey(from)) {
+      throw Exception('Mata uang $from tidak didukung');
     }
-    return amount * rates[from]![to]!;
+    if (!_rates.containsKey(to)) {
+      throw Exception('Mata uang $to tidak didukung');
+    }
+    double fromRate = _rates[from]!;
+    double toRate = _rates[to]!;
+
+    // Konversi: amount -> USD -> target
+    double amountInUSD = amount / fromRate;
+    double converted = amountInUSD * toRate;
+
+    return converted;
   }
 
-  // Untuk kebutuhan API (opsional)
-  Future<double?> convertCurrency(String from, String to, double amount) async {
-    final response = await http.get(Uri.parse('$_baseUrl$from'));
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      if (data['result'] == 'success') {
-        final rates = data['conversion_rates'];
-        if (rates.containsKey(to)) {
-          double rate = rates[to];
-          return amount * rate;
-        }
-      }
-    }
-    return null;
-  }
+  // List kode mata uang untuk dropdown
+  List<String> get currencies => _rates.keys.toList();
 }

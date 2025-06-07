@@ -1,40 +1,9 @@
 import 'dart:convert';
-
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:hive/hive.dart';
 import 'package:http/http.dart' as http;
-
-class Book {
-  final String id;
-  final String title;
-  final String subtitle;
-  final String price;
-  final String image;
-  final List<String> genres;
-
-  Book({
-    required this.id,
-    required this.title,
-    required this.subtitle,
-    required this.price,
-    required this.image,
-    required this.genres,
-  });
-
-  factory Book.fromJson(Map<String, dynamic> json) {
-    // Tambah genre dummy karena API itbook.store ga ada genre
-    List<String> dummyGenres = ['Fiction', 'Technology', 'Science', 'Business'];
-
-    return Book(
-      id: json['isbn13'] ?? '',
-      title: json['title'] ?? '',
-      subtitle: json['subtitle'] ?? '',
-      price: json['price'] ?? '',
-      image: json['image'] ?? '',
-      genres: [dummyGenres[json['title'].length % dummyGenres.length]], // dummy genre dari panjang judul
-    );
-  }
-}
+import 'detail_page.dart';
+import '../../models/book.dart';
 
 class RekomendasiPage extends StatefulWidget {
   @override
@@ -42,6 +11,8 @@ class RekomendasiPage extends StatefulWidget {
 }
 
 class _RekomendasiPageState extends State<RekomendasiPage> {
+  final Color primaryColor = Colors.blue;
+
   List<Book> _books = [];
   List<Book> _filteredBooks = [];
   List<String> _favoriteIds = [];
@@ -49,10 +20,17 @@ class _RekomendasiPageState extends State<RekomendasiPage> {
   String _selectedGenre = 'All';
   final List<String> _genres = ['All', 'Fiction', 'Technology', 'Science', 'Business'];
 
+  late Box _favBox;
+
   @override
   void initState() {
     super.initState();
-    _loadBooks();
+    _openHiveAndLoad();
+  }
+
+  Future<void> _openHiveAndLoad() async {
+    _favBox = await Hive.openBox('favoriteBooks');
+    await _loadBooks();
     _loadFavorites();
   }
 
@@ -68,27 +46,27 @@ class _RekomendasiPageState extends State<RekomendasiPage> {
         _applyFilters();
       });
     } else {
-      // error handle
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal memuat data buku')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal memuat data buku')),
+      );
     }
   }
 
-  Future<void> _loadFavorites() async {
-    final prefs = await SharedPreferences.getInstance();
+  void _loadFavorites() {
     setState(() {
-      _favoriteIds = prefs.getStringList('favoriteBooks') ?? [];
+      _favoriteIds = _favBox.keys.cast<String>().toList();
     });
   }
 
   Future<void> _toggleFavorite(String bookId) async {
-    final prefs = await SharedPreferences.getInstance();
     setState(() {
       if (_favoriteIds.contains(bookId)) {
+        _favBox.delete(bookId);
         _favoriteIds.remove(bookId);
       } else {
+        _favBox.put(bookId, true);
         _favoriteIds.add(bookId);
       }
-      prefs.setStringList('favoriteBooks', _favoriteIds);
     });
   }
 
@@ -107,68 +85,109 @@ class _RekomendasiPageState extends State<RekomendasiPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: Text('Rekomendasi Buku'),
+        backgroundColor: primaryColor,
+        elevation: 0,
       ),
       body: Column(
         children: [
-          Padding(
-            padding: EdgeInsets.all(8),
-            child: TextField(
-              decoration: InputDecoration(
-                labelText: 'Cari judul buku',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.search),
-              ),
-              onChanged: (value) {
-                _searchText = value;
-                _applyFilters();
-              },
-            ),
-          ),
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: 8),
-            child: DropdownButton<String>(
-              value: _selectedGenre,
-              isExpanded: true,
-              items: _genres.map((genre) {
-                return DropdownMenuItem<String>(
-                  value: genre,
-                  child: Text(genre),
-                );
-              }).toList(),
-              onChanged: (value) {
-                if (value != null) {
-                  _selectedGenre = value;
-                  _applyFilters();
-                }
-              },
+          Container(
+            padding: EdgeInsets.all(12),
+            color: primaryColor,
+            child: Column(
+              children: [
+                TextField(
+                  style: TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    filled: true,
+                    fillColor: Colors.white24,
+                    labelText: 'Cari judul buku',
+                    labelStyle: TextStyle(color: Colors.white),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    prefixIcon: Icon(Icons.search, color: Colors.white),
+                  ),
+                  onChanged: (value) {
+                    _searchText = value;
+                    _applyFilters();
+                  },
+                ),
+                SizedBox(height: 12),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _selectedGenre,
+                      isExpanded: true,
+                      items: _genres.map((genre) {
+                        return DropdownMenuItem<String>(
+                          value: genre,
+                          child: Text(genre),
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        if (value != null) {
+                          _selectedGenre = value;
+                          _applyFilters();
+                        }
+                      },
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
           Expanded(
             child: _filteredBooks.isEmpty
                 ? Center(child: Text('Tidak ada buku ditemukan'))
                 : ListView.builder(
+                    padding: EdgeInsets.all(12),
                     itemCount: _filteredBooks.length,
                     itemBuilder: (context, index) {
                       final book = _filteredBooks[index];
                       final isFavorite = _favoriteIds.contains(book.id);
 
-                      return ListTile(
-                        leading: Image.network(
-                          book.image,
-                          width: 50,
-                          errorBuilder: (_, __, ___) => Icon(Icons.book),
+                      return Card(
+                        margin: EdgeInsets.only(bottom: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
                         ),
-                        title: Text(book.title),
-                        subtitle: Text('${book.subtitle}\n${book.price}'),
-                        isThreeLine: true,
-                        trailing: IconButton(
-                          icon: Icon(
-                            isFavorite ? Icons.favorite : Icons.favorite_border,
-                            color: isFavorite ? Colors.red : null,
+                        elevation: 3,
+                        child: ListTile(
+                          contentPadding: EdgeInsets.all(12),
+                          leading: ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.network(
+                              book.image,
+                              width: 50,
+                              height: 70,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Icon(Icons.book),
+                            ),
                           ),
-                          onPressed: () => _toggleFavorite(book.id),
+                          title: Text(book.title, style: TextStyle(fontWeight: FontWeight.bold)),
+                          subtitle: Text('${book.subtitle}\n${book.price}'),
+                          isThreeLine: true,
+                          trailing: IconButton(
+                            icon: Icon(
+                              isFavorite ? Icons.favorite : Icons.favorite_border,
+                              color: isFavorite ? Colors.red : Colors.grey,
+                            ),
+                            onPressed: () => _toggleFavorite(book.id),
+                          ),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => DetailPage(book: book),
+                              ),
+                            );
+                          },
                         ),
                       );
                     },

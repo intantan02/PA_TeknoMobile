@@ -4,7 +4,7 @@ import '../utils/session_manager.dart';
 
 class ApiService {
   static const String baseUrl =
-      'https://67e1759c-3c71-4e0e-b09b-01aaf1b68a22-00-y5n7jzqbu2vb.sisko.replit.dev/';
+      'https://api.itbook.store/1.0/new';
 
   // Login memakai username dan password (sesuai backend)
   Future<bool> login(String username, String password) async {

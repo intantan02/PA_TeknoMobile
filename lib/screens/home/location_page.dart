@@ -5,7 +5,6 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:rekomendasi_buku/services/location_service.dart';
 
-
 class LocationPage extends StatefulWidget {
   @override
   State<LocationPage> createState() => _LocationPageState();
@@ -13,7 +12,7 @@ class LocationPage extends StatefulWidget {
 
 class _LocationPageState extends State<LocationPage> {
   final LocationService _locationService = LocationService();
-  Completer<GoogleMapController> _mapController = Completer();
+  final Completer<GoogleMapController> _mapController = Completer();
 
   LatLng? _currentPosition;
   bool _loading = true;
@@ -25,21 +24,36 @@ class _LocationPageState extends State<LocationPage> {
   }
 
   Future<void> _determinePosition() async {
+    setState(() {
+      _loading = true;
+    });
+
     Position? position = await _locationService.getCurrentLocation();
 
     if (position != null) {
+      final newPosition = LatLng(position.latitude, position.longitude);
+
       setState(() {
-        _currentPosition = LatLng(position.latitude, position.longitude);
+        _currentPosition = newPosition;
         _loading = false;
       });
-    } else {
-      // Kalau lokasi ga bisa didapatkan
-      setState(() {
-        _loading = false;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal mendapatkan lokasi. Pastikan GPS aktif dan izin diberikan.')),
+
+      final controller = await _mapController.future;
+      controller.animateCamera(
+        CameraUpdate.newLatLngZoom(newPosition, 15),
       );
+    } else {
+      setState(() {
+        _loading = false;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal mendapatkan lokasi. Pastikan GPS aktif dan izin diberikan.'),
+          ),
+        );
+      }
     }
   }
 
@@ -66,6 +80,13 @@ class _LocationPageState extends State<LocationPage> {
                     _mapController.complete(controller);
                   },
                 ),
+      floatingActionButton: !_loading && _currentPosition != null
+          ? FloatingActionButton(
+              onPressed: _determinePosition,
+              child: Icon(Icons.my_location),
+              tooltip: 'Perbarui Lokasi',
+            )
+          : null,
     );
   }
 }

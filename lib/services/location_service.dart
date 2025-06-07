@@ -6,31 +6,36 @@ class LocationService {
 
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
-        // Permission ditolak user
-        return false;
-      }
+      if (permission == LocationPermission.denied) return false;
     }
 
     if (permission == LocationPermission.deniedForever) {
-      // Permission ditolak permanen, perlu arahkan user ke settings manual
       return false;
     }
 
     return true;
   }
 
+  Future<bool> isLocationEnabled() async {
+    return await Geolocator.isLocationServiceEnabled();
+  }
+
   Future<Position?> getCurrentLocation() async {
+    bool serviceEnabled = await isLocationEnabled();
+    if (!serviceEnabled) {
+      print('Location services are disabled.');
+      return null;
+    }
+
     bool hasPermission = await checkPermission();
     if (!hasPermission) return null;
 
     try {
       return await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
-        timeLimit: const Duration(seconds: 10), // Timeout biar ga nunggu terlalu lama
+        timeLimit: const Duration(seconds: 10),
       );
     } catch (e) {
-      // Misal lokasi tidak bisa didapatkan karena GPS mati atau timeout
       print('Error getting location: $e');
       return null;
     }

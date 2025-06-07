@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
 import '../../models/user.dart';
-import '../../services/auth_service.dart';
-import '../../utils/session_manager.dart';
-import 'dart:convert';
 
 class EditProfilePage extends StatefulWidget {
   @override
@@ -22,9 +20,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
   }
 
   Future<void> _loadUserData() async {
-    final userJson = await SessionManager.getUser();
-    if (userJson != null) {
-      final user = User.fromJson(jsonDecode(userJson));
+    final userBox = await Hive.openBox<User>('users');
+    // Ambil user pertama (atau sesuaikan logika user aktif)
+    if (userBox.isNotEmpty) {
+      final user = userBox.values.first;
       setState(() {
         _user = user;
         _usernameController.text = user.username;
@@ -34,14 +33,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
   }
 
   Future<void> _saveProfile() async {
-    if (_formKey.currentState!.validate()) {
-      // Simulasi penyimpanan ke backend
-      final updatedUser = User(
-        id: _user!.id,
-        username: _usernameController.text,
-        email: _emailController.text, passwordHash: '',
-      );
-      await SessionManager.saveUser(jsonEncode(updatedUser.toJson()));
+    if (_formKey.currentState!.validate() && _user != null) {
+      final userBox = await Hive.openBox<User>('users');
+      _user!
+        ..username = _usernameController.text
+        ..email = _emailController.text;
+      await userBox.put(_user!.id, _user!);
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Profil berhasil diperbarui')),
@@ -68,8 +65,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
               TextFormField(
                 controller: _emailController,
                 decoration: InputDecoration(labelText: 'Email'),
-                validator: (value) =>
-                    value!.isEmpty ? 'Tidak boleh kosong' : null,
+                validator: (value) => value!.isEmpty ? 'Tidak boleh kosong' : null,
               ),
               SizedBox(height: 32),
               ElevatedButton(

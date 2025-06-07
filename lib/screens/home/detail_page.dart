@@ -1,78 +1,33 @@
 import 'package:flutter/material.dart';
-import '../../models/book.dart';
-import '../../services/db_service.dart';
+import 'package:rekomendasi_buku/models/book.dart';
+import 'rekomendasi_page.dart'; // Import agar class Book dikenali
 
-class DetailPage extends StatefulWidget {
+class DetailPage extends StatelessWidget {
   final Book book;
 
   const DetailPage({Key? key, required this.book}) : super(key: key);
 
   @override
-  _DetailPageState createState() => _DetailPageState();
-}
-
-class _DetailPageState extends State<DetailPage> {
-  final DBService _dbService = DBService();
-  bool _isFavorite = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _checkFavorite();
-  }
-
-  Future<void> _checkFavorite() async {
-    bool fav = await _dbService.isFavorite(widget.book.id as String);
-    setState(() {
-      _isFavorite = fav;
-    });
-  }
-
-  Future<void> _toggleFavorite() async {
-    if (_isFavorite) {
-      await _dbService.removeFavorite(widget.book.id as String);
-    } else {
-      await _dbService.addFavorite(widget.book.toMap());
-    }
-    setState(() {
-      _isFavorite = !_isFavorite;
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(_isFavorite ? 'Ditambahkan ke favorit' : 'Dihapus dari favorit'),
-      ),
-    );
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final book = widget.book;
     return Scaffold(
       appBar: AppBar(
         title: Text(book.title),
-        actions: [
-          IconButton(
-            icon: Icon(_isFavorite ? Icons.favorite : Icons.favorite_border),
-            onPressed: _toggleFavorite,
-            tooltip: _isFavorite ? 'Hapus dari favorit' : 'Tambah ke favorit',
-          ),
-        ],
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (book.coverUrl.isNotEmpty)
+            if (book.image.isNotEmpty)
               Image.network(
-                book.coverUrl,
+                book.image,
                 height: 250,
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) => Container(
                   height: 250,
                   color: Colors.grey[300],
                   alignment: Alignment.center,
-                  child: Icon(Icons.broken_image, size: 50, color: Colors.grey),
+                  child: const Icon(Icons.broken_image, size: 50, color: Colors.grey),
                 ),
               ),
             const SizedBox(height: 16),
@@ -80,10 +35,24 @@ class _DetailPageState extends State<DetailPage> {
               book.title,
               style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
-            Text(
-              'Penulis: ${book.author}',
-              style: const TextStyle(fontSize: 18, fontStyle: FontStyle.italic),
-            ),
+            const SizedBox(height: 8),
+            if (book.subtitle.isNotEmpty)
+              Text(
+                book.subtitle,
+                style: const TextStyle(fontSize: 18, fontStyle: FontStyle.italic),
+              ),
+            const SizedBox(height: 12),
+            if (book.price.isNotEmpty)
+              Text(
+                'Harga: ${book.price}',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            const SizedBox(height: 12),
+            if (book.genres.isNotEmpty)
+              Text(
+                'Genre: ${book.genres.join(", ")}',
+                style: const TextStyle(fontStyle: FontStyle.italic),
+              ),
           ],
         ),
       ),

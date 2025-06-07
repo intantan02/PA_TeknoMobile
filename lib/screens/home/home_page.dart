@@ -5,7 +5,9 @@ import 'konversi_waktu_page.dart';
 import 'profile_page.dart';
 import 'konversi_mata_uang_page.dart';
 import 'feedback_page.dart';
-import 'location_page.dart'; // import halaman lokasi
+import 'location_page.dart';
+import '../../../services/auth_service.dart';
+import '../../../models/user.dart';
 
 class _MenuItem {
   final String title;
@@ -15,35 +17,58 @@ class _MenuItem {
   _MenuItem(this.title, this.icon, this.page);
 }
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  final AuthService _authService = AuthService();
+  User? _currentUser;
+
   final List<_MenuItem> menuItems = [
     _MenuItem('Rekomendasi Buku', Icons.book, RekomendasiPage()),
     _MenuItem('Konversi Waktu', Icons.access_time, KonversiWaktuPage()),
     _MenuItem('Favorit', Icons.favorite, FavoritePage()),
     _MenuItem('Konversi Mata Uang', Icons.attach_money, KonversiMataUangPage()),
     _MenuItem('Saran & Kesan', Icons.feedback, FeedbackPage()),
-    _MenuItem('Lokasi Saya', Icons.location_on, LocationPage()), // menu baru
+    _MenuItem('Lokasi Saya', Icons.location_on, LocationPage()),
   ];
 
-  void _logout(BuildContext context) {
-    // TODO: Tambahkan logika logout jika ada, misalnya hapus session/token
+  @override
+  void initState() {
+    super.initState();
+    _loadUser();
+  }
+
+  Future<void> _loadUser() async {
+    final user = await _authService.getCurrentUser();
+    setState(() {
+      _currentUser = user as User?;
+    });
+  }
+
+  void _logout(BuildContext context) async {
+    await _authService.logout();
     Navigator.pushReplacementNamed(context, '/login');
   }
 
   @override
   Widget build(BuildContext context) {
+    final greeting = _currentUser != null
+        ? 'Selamat datang, ${_currentUser!.username}'
+        : 'Selamat Datang di Aplikasi BIRU';
+
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
           icon: Icon(Icons.arrow_back),
-          onPressed: () {
-            Navigator.pop(context);
-          },
+          onPressed: () => Navigator.pop(context),
         ),
         backgroundColor: Colors.blue,
         elevation: 0,
         title: Text(
-          'Selamat Datang di Aplikasi BIRU',
+          greeting,
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         actions: [
@@ -66,7 +91,6 @@ class HomePage extends StatelessWidget {
       ),
       body: SafeArea(
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SizedBox(height: 8),
             Expanded(

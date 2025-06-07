@@ -1,106 +1,74 @@
-import 'dart:convert';
-import 'package:crypto/crypto.dart';
-import 'package:sqflite/sqflite.dart';
-import 'db_service.dart';
+import 'package:hive/hive.dart';
+import 'package:rekomendasi_buku/models/usersession.dart';
+import '../models/user.dart';
 
 class AuthService {
-  final DBService _dbService = DBService();
-
-  // Hash password menggunakan SHA-256
-  String _hashPassword(String password) {
-    return sha256.convert(utf8.encode(password)).toString();
-  }
+  static const String userBoxName = 'users';
+  static const String sessionBoxName = 'user_session';
 
   // Register user baru
   Future<bool> register({
     required String username,
-    required String email,
     required String password,
+    String? fullName,
+    String? email,
+    String? profileImageUrl,
   }) async {
-    final db = await _dbService.database;
+    final userBox = await Hive.openBox<User>(userBoxName);
 
-    // Cek apakah username atau email sudah ada di database
-    final existing = await db.query(
-      'users',
-      where: 'username = ? OR email = ?',
-      whereArgs: [username, email],
-      limit: 1,
+    // Cek apakah username atau email sudah ada
+    final exists = userBox.values.any((u) =>
+        u.username == username || (email != null && u.email == email));
+    if (exists) return false;
+
+    // Hitung ID baru (auto increment)
+    final newId = userBox.isEmpty
+        ? 1
+        : (userBox.values.map((u) => u.id).reduce((a, b) => a > b ? a : b) + 1);
+
+    final user = User(
+      id: newId,
+      username: username,
+      passwordHash: hashPassword(password),
+      fullName: fullName,
+      email: email,
+      profileImageUrl: profileImageUrl,
     );
 
-    if (existing.isNotEmpty) {
-      // Username atau email sudah terpakai
-      return false;
-    }
-
-    final hashedPassword = _hashPassword(password);
-
-    try {
-      await db.insert('users', {
-        'username': username,
-        'email': email,
-        'password': hashedPassword,
-      });
-      return true;
-    } catch (e) {
-      print('Error register user: $e');
-      return false;
-    }
+    await userBox.put(newId, user);
+    return true;
   }
 
-  // Login user berdasarkan username dan password
+  // Login user
   Future<bool> login({
     required String username,
     required String password,
   }) async {
-    final db = await _dbService.database;
-    final hashedPassword = _hashPassword(password);
-
-    final result = await db.query(
-      'users',
-      where: 'username = ? AND password = ?',
-      whereArgs: [username, hashedPassword],
-      limit: 1,
-    );
-
-    if (result.isNotEmpty) {
-      // Simpan session user yang berhasil login
-      await _saveSession(result.first);
-      return true;
-    }
-    return false;
-  }
-
-  // Simpan session user saat login
-  Future<void> _saveSession(Map<String, dynamic> user) async {
-    final db = await _dbService.database;
+    final userBox = await Hive.openBox<User>(userBoxName);
+    final sessionBox = Hive.box<UserSession>('user_session');
 
     try {
-      await db.transaction((txn) async {
-        await txn.delete('user_session'); // Hapus session lama
-        await txn.insert('user_session', {
-          'id': user['id'],
-          'username': user['username'],
-          'email': user['email'],
-        });
-      });
+      final user = userBox.values.firstWhere(
+        (u) => u.username == username && u.passwordHash == hashPassword(password),
+        orElse: () => throw Exception('User not found'),
+      );
+      await sessionBox.clear();
+      await sessionBox.put('current', user as UserSession);
+      return true;
     } catch (e) {
-      print('Failed to save session: $e');
+      return false;
     }
   }
 
-  // Ambil user session yang sedang login
-  Future<Map<String, dynamic>?> getCurrentUser() async {
-    final db = await _dbService.database;
-    final result = await db.query('user_session', limit: 1);
-    if (result.isNotEmpty) {
-      return result.first;
-    }
-    return null;
+  // Ambil user session saat ini
+  Future<UserSession?> getCurrentUser() async {
+    final sessionBox = await Hive.openBox<UserSession>(sessionBoxName);
+    return sessionBox.get('current');
   }
 
-  // Logout user dan hapus session
+  // Logout
   Future<void> logout() async {
-    final db = await _dbService.database;
-    await db.delete('user_session');
+    final sessionBox = await Hive.openBox<User>(sessionBoxName);
+    await sessionBox.clear();
   }
 }
